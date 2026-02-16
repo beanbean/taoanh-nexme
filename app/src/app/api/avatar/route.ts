@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  const url = request.nextUrl.searchParams.get('url');
+
+  if (!url) {
+    console.error('[Avatar API] Missing url parameter');
+    return NextResponse.json({ error: 'Missing url parameter', dataUrl: '' }, { status: 400 });
+  }
+
+  console.log('[Avatar API] Fetching avatar from:', url);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.error('[Avatar API] Failed to fetch, status:', response.status);
+      return NextResponse.json({ error: 'Failed to fetch image', dataUrl: '' }, { status: response.status });
+    }
+
+    const blob = await response.blob();
+    const buffer = await blob.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    const mimeType = blob.type || 'image/jpeg';
+
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    console.log('[Avatar API] Successfully converted to data URL, mimeType:', mimeType, 'size:', base64.length);
+
+    return NextResponse.json({
+      base64,
+      mimeType,
+      dataUrl
+    });
+  } catch (error) {
+    console.error('[Avatar API] Error proxying avatar:', error);
+    // Return empty dataUrl on error instead of throwing
+    return NextResponse.json({ error: 'Failed to fetch avatar', details: String(error), dataUrl: '' }, { status: 200 });
+  }
+}
