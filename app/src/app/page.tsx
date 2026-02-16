@@ -51,21 +51,17 @@ export default function HomePage() {
       <div className="relative w-full max-w-sm fade-in">
         {/* Logo / Brand Mark */}
         <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shadow-elevated">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" />
-            </svg>
-          </div>
+          <img src="/logo.svg" alt="Nexme" className="w-16 h-16" />
         </div>
 
         {/* Card */}
         <div className="card p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-2">
-              Tạo Ảnh Marathon
+              Công cụ tạo ảnh thi đấu Marathon của Nexme
             </h1>
             <p className="text-sm text-text-secondary leading-relaxed">
-              Theo dõi cân nặng và tạo ảnh cho đội của bạn
+              Tạo ảnh cho đội chơi của bạn để tuyên đường
             </p>
           </div>
 
@@ -108,7 +104,7 @@ export default function HomePage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-text-tertiary mt-6">
-          Marathon Weight Tracker
+          Công cụ tạo ảnh thi đấu Marathon của Nexme
         </p>
       </div>
     </div>

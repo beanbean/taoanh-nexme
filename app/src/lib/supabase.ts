@@ -79,13 +79,19 @@ export async function getAllPendingApprovals(): Promise<any[]> {
 }
 
 export async function getAllApprovals(): Promise<any[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    console.error('getAllApprovals: No active session');
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('user_approvals')
     .select('*')
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching all approvals:', error);
+    console.error('Error fetching all approvals:', error.message, error.code, error.details);
     return [];
   }
 
