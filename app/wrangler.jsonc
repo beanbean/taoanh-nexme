@@ -4,6 +4,9 @@
 	"name": "app",
 	"compatibility_date": "2026-02-14",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"routes": [
+		{ "pattern": "taoanh.nexme.vn/*", "zone_name": "nexme.vn" }
+	],
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
