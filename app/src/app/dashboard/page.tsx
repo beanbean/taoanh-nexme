@@ -423,9 +423,14 @@ export default function DashboardPage() {
       player.rank = (index + 1).toString();
     });
 
-    // Mark the top player
+    // Mark the top player(s) - handle ties (cùng điểm thì cùng có vương miện)
     if (members.length > 0) {
-      members[0].is_top = true;
+      const topLoss = members[0].round_display;
+      members.forEach(player => {
+        if (player.round_display === topLoss) {
+          player.is_top = true;
+        }
+      });
     }
 
     // Members first, then captains at the bottom
