@@ -1,0 +1,361 @@
+{
+  "name": "3.send_image_zalo_captain",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -96,
+        -640
+      ],
+      "id": "0b0d5349-2592-47ed-833a-9c9c282ca20a",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        352,
+        -736
+      ],
+      "id": "4265c74c-6303-4682-a5cc-96711b971965",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vkhqqybnvnoagxqglnkn.supabase.co/rest/v1/rpc/update_queue_status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZraHFxeWJudm5vYWd4cWdsbmtuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDAyOTYwNCwiZXhwIjoyMDc5NjA1NjA0fQ.dXYS9z46Ymb2EEQOke_iEqHL0US-4hcPyIjT0A9adr8"
+            },
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZraHFxeWJudm5vYWd4cWdsbmtuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDAyOTYwNCwiZXhwIjoyMDc5NjA1NjA0fQ.dXYS9z46Ymb2EEQOke_iEqHL0US-4hcPyIjT0A9adr8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "p_id",
+              "value": "={{ $('🛡️ Safe Parser').item.json.db_id }}"
+            },
+            {
+              "name": "p_status",
+              "value": "sent"
+            },
+            {
+              "name": "p_error"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1696,
+        -736
+      ],
+      "id": "e99a9b6f-d0f1-4cc4-89f2-e80b92fa8b35",
+      "name": "RPC: Update Status"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "* * * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -96,
+        -832
+      ],
+      "id": "e3ebbbbf-cff5-4245-a2a9-56ac5d4a7b2d",
+      "name": "Schedule: 1m1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vkhqqybnvnoagxqglnkn.supabase.co/rest/v1/rpc/pop_bot_queue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZraHFxeWJudm5vYWd4cWdsbmtuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDAyOTYwNCwiZXhwIjoyMDc5NjA1NjA0fQ.dXYS9z46Ymb2EEQOke_iEqHL0US-4hcPyIjT0A9adr8"
+            },
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZraHFxeWJudm5vYWd4cWdsbmtuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDAyOTYwNCwiZXhwIjoyMDc5NjA1NjA0fQ.dXYS9z46Ymb2EEQOke_iEqHL0US-4hcPyIjT0A9adr8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "p_limit",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        128,
+        -736
+      ],
+      "id": "c39d640b-f24a-4f03-9f7c-a81f3cb37dd1",
+      "name": "RPC: Pop Queue1",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check_image",
+              "leftValue": "={{ $json.has_image }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        -816
+      ],
+      "id": "b7b2b11f-2244-4b38-b16d-832296b5023c",
+      "name": "❓ Có Ảnh không?1"
+    },
+    {
+      "parameters": {
+        "operation": "sendImageMessage",
+        "userId": "={{ $('🛡️ Safe Parser').item.json.user_id }}",
+        "imageUrl": "={{ $json.content_image }}"
+      },
+      "type": "n8n-nodes-zalo-user-v3.zaloOA",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        -880
+      ],
+      "id": "2beecf64-15c0-41a3-9501-9f9b440f2525",
+      "name": "Zalo: Gửi Ảnh1",
+      "credentials": {
+        "zaloOACredentialsApi": {
+          "id": "4Kt3JLSTEYIBFhgv",
+          "name": "OA nexme - app marathon"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================================\n// 🛡️ SAFE PARSER: CHUẨN HÓA DỮ LIỆU TỪNG ITEM\n// ========================================================\n\nconst item = $input.item.json;\nlet payload = item.payload;\n\n// 1. Parse JSON nếu nó đang là String\nif (payload && typeof payload === 'string') {\n    try {\n        payload = JSON.parse(payload);\n    } catch (e) {\n        payload = {};\n    }\n}\n\n// 2. Trích xuất dữ liệu an toàn\nconst recipientId = payload?.recipient?.id;\nconst msgBody = payload?.message || {};\nconst textContent = msgBody.text || null;\n\n// ✅ TASK 1.5: VALIDATION recipient.id\nif (!recipientId) {\n  console.error('⚠️ THIẾU recipient.id trong payload:', JSON.stringify(item.id));\n  // Return null để skip item này hoặc có thể throw error\n}\n\n// Kiểm tra xem có ảnh không\nlet imageUrl = null;\nif (msgBody.attachment && msgBody.attachment.type === 'image') {\n    imageUrl = msgBody.attachment.payload?.url || null;\n}\n\n// 3. Trả về định dạng phẳng\nreturn {\n    db_id: item.id,\n    user_id: recipientId,  // ✅ Đây là ID đội trưởng từ zalo_captain_id\n    content_text: textContent,\n    content_image: imageUrl,\n    has_text: !!textContent,\n    has_image: !!imageUrl\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -832
+      ],
+      "id": "1a3697db-9d61-4ffb-b80b-f633975ceb29",
+      "name": "🛡️ Safe Parser"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "id": "fdeb37ec-ddf1-48da-9c71-3fb85725b68c",
+          "event_id": null,
+          "bot_type": "PLAYER",
+          "payload": {
+            "message": {
+              "text": "📊 KẾT QUẢ: Marathon Thử Thách 10 Ngày\n👤 Runner: Công Admin (Hai Yen)\n🗓️ Ngày 3, 20/12/2025\n-------------------\n⚖️ Cân đầu vào: 0kg\n📍 Hiện tại: 0kg\n➖ Giữ nguyên cân nặng\n\n💡 Đang tạo ảnh báo cáo...",
+              "attachment": {
+                "type": "image",
+                "payload": {
+                  "url": "https://media-render.nexme.vn/reports/personal-Cong_Admin-1766183966591.png"
+                }
+              }
+            },
+            "recipient": {
+              "id": "2405161230734177"
+            }
+          },
+          "status": "pending",
+          "retry_count": 0,
+          "created_at": "2025-12-19T22:42:36.619863+00:00",
+          "sent_at": null,
+          "priority": 3,
+          "scheduled_at": "2025-12-19T22:42:36.619863+00:00",
+          "lease_until": null,
+          "attempt_count": 0,
+          "max_attempts": 3,
+          "last_error": null,
+          "template_key": null,
+          "template_vars": null
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "RPC: Pop Queue1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "🛡️ Safe Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC: Update Status": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule: 1m1": {
+      "main": [
+        [
+          {
+            "node": "RPC: Pop Queue1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC: Pop Queue1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ Có Ảnh không?1": {
+      "main": [
+        [
+          {
+            "node": "Zalo: Gửi Ảnh1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RPC: Update Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zalo: Gửi Ảnh1": {
+      "main": [
+        [
+          {
+            "node": "RPC: Update Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🛡️ Safe Parser": {
+      "main": [
+        [
+          {
+            "node": "❓ Có Ảnh không?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "hORJlWLQ84vPW1tX",
+    "executionTimeout": 300
+  },
+  "versionId": "b4ac5b1c-34af-4006-80e4-ea13ff571984",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bbf85f6bf60f4f428f9bb800a84af65104d12b54938b900d8e31b5ec5fa02d99"
+  },
+  "id": "Cxhi6bFhwv0XbUF4",
+  "tags": []
+}

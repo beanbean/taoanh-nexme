@@ -1,0 +1,470 @@
+{
+  "name": "2.Render_team_leaderboard",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// GROUP BY TEAM — FIXED ZALO ID CAPTAIN (FINAL)\n// ============================================\n\nfunction norm(s) {\n  return String(s ?? \"\")\n    .trim()\n    .toLowerCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\")\n    .replace(/\\s+/g, \" \");\n}\n\nfunction toNum(v) {\n  if (v === null || v === undefined) return null;\n  const s = String(v).trim();\n  if (!s) return null;\n  const n = Number(s.replace(\",\", \".\"));\n  return Number.isFinite(n) ? n : null;\n}\n\nfunction get(j, key) {\n  const nk = norm(key);\n  for (const [k, v] of Object.entries(j)) {\n    if (norm(k) === nk) return v;\n  }\n  return undefined;\n}\n\nfunction getDay(j, d) {\n  const targets = [`day ${d}`, `day ${d}:`, `day ${d} :`].map(norm);\n  for (const [k, v] of Object.entries(j)) {\n    if (targets.includes(norm(k))) return v;\n  }\n  return undefined;\n}\n\nconst items = $input.all();\nconst teamMap = new Map();\n\nitems.forEach(item => {\n  const j = item.json;\n\n  const team = get(j, \"Đội\");\n  if (!team) return;\n\n  const name = get(j, \"Người chơi\") ?? \"\";\n  const avatar =\n    j.avatar_url ??\n    get(j, \"avatar\") ??\n    \"https://via.placeholder.com/120?text=?\";\n\n  const role = norm(get(j, \"Vai Trò\") ?? \"\");\n  const captainName = get(j, \"Đội trưởng\") ?? \"\";\n\n  // --- SỬA 1: Bổ sung key \"zaloID_captain\" vào danh sách tìm kiếm ---\n  const zaloId =\n    get(j, \"zaloID_captain\") ?? // <--- Key chính xác trong input của bạn\n    get(j, \"Zalo ID\") ??\n    get(j, \"ID Zalo\") ??\n    get(j, \"id_zalo\") ??\n    get(j, \"zalo\") ??\n    \"\";\n\n  const isCaptainRow =\n    role === \"doi truong\" ||\n    norm(name) === norm(captainName);\n\n  const round_name = get(j, \"Vòng\") ?? \"Marathon\";\n  const time_range = get(j, \"Thời Gian\") ?? \"\";\n\n  const weights = [];\n  for (let d = 0; d <= 10; d++) {\n    weights.push(toNum(getDay(j, d)));\n  }\n\n  if (!teamMap.has(team)) {\n    teamMap.set(team, {\n      team_name: team,\n      round_name,\n      time_range,\n      players: [],\n      captain: null,\n      captain_id: \"\" // Khởi tạo rỗng\n    });\n  }\n\n  const teamObj = teamMap.get(team);\n\n  // --- SỬA 2: Cập nhật ID Đội trưởng ngay khi tìm thấy (không cần chờ đúng dòng captain) ---\n  // Vì cột này là \"zaloID_captain\" (ID của đội trưởng) nên dữ liệu này đúng cho cả team\n  if (zaloId && !teamObj.captain_id) {\n    teamObj.captain_id = String(zaloId).trim();\n  }\n\n  if (isCaptainRow) {\n    teamObj.captain = {\n      name,\n      avatar,\n      weights,\n      is_captain: true,\n      role: \"captain\",\n      captain_note: \"Đội Trưởng\",\n      zalo_id: zaloId // Lưu thêm vào object captain cho chắc\n    };\n  } else {\n    teamObj.players.push({\n      name,\n      avatar,\n      weights,\n      is_captain: false,\n      role: \"player\",\n      captain_note: null\n    });\n  }\n});\n\n// ---------- FINAL ASSEMBLY ----------\nconst output = [];\n\nfor (const team of teamMap.values()) {\n  if (team.captain) {\n    team.players.push(team.captain); // captain always last\n  }\n  delete team.captain;\n  output.push({ json: team });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        416
+      ],
+      "id": "6e90dfcb-24c0-4679-9299-9fcdc3b350b0",
+      "name": "Group By Team"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==================================================\n// RANK PLAYERS (TOP 8) — FINAL VERSION\n// ==================================================\n// - Auto-detect current day\n// - Format: (-) Loss, (+) Gain with Warning\n// - PASS THROUGH: captain_id\n// ==================================================\n\nfunction round1(n) {\n  return Number.isFinite(n) ? Math.round(n * 10) / 10 : null;\n}\n\nfunction calculateDailyLoss(weights, day) {\n  const today = weights?.[day];\n  if (today === null || today === undefined) return null;\n\n  for (let i = day - 1; i >= 0; i--) {\n    if (weights[i] !== null && weights[i] !== undefined) {\n      return weights[i] - today;\n    }\n  }\n  return null;\n}\n\nfunction calculateTotalLoss(weights, day) {\n  if (!weights || !Array.isArray(weights)) return null;\n\n  // Tìm cân nặng ĐẦU TIÊN có dữ liệu (từ ngày 0 trở đi)\n  let firstWeight = null;\n  let firstDay = -1;\n  for (let i = 0; i <= day; i++) {\n    if (weights[i] !== null && weights[i] !== undefined) {\n      firstWeight = weights[i];\n      firstDay = i;\n      break;\n    }\n  }\n\n  if (firstWeight === null) return null;\n\n  // Tìm cân nặng GẦN NHẤT từ day về 0 (NHƯNG KHÁC firstDay)\n  for (let i = day; i >= 0; i--) {\n    if (i !== firstDay && weights[i] !== null && weights[i] !== undefined) {\n      return firstWeight - weights[i];\n    }\n  }\n\n  // Nếu chỉ có 1 lần gửi chỉ số → return null\n  return null;\n}\n\n// ================================\n// INPUT (Get current item in loop)\n// ================================\n\nconst items = $input.all();\n\n// FIX: Trong loop, chỉ có 1 item mỗi lần\n// Không dùng items.find() vì có thể lấy sai\nconst teamData = items.length === 1 ? items[0].json : items[0].json;\n\n// --- TỰ ĐỘNG TÌM NGÀY MỚI NHẤT ---\nlet detectedDay = 1;\nconst tempPlayers = teamData.players.filter(p => !p.is_captain);\n\nfor (let d = 1; d <= 10; d++) {\n  const hasData = tempPlayers.some(p => \n    p.weights && \n    p.weights[d] !== null && \n    p.weights[d] !== undefined\n  );\n  if (hasData) detectedDay = d;\n}\n\nconst currentDay = Number(\n  teamData.day_number ??\n  teamData.day ??\n  teamData.lap_number ??\n  detectedDay\n);\n\n// ================================\n// SPLIT PLAYERS & CAPTAIN\n// ================================\n\nconst players = teamData.players.filter(p => !p.is_captain);\nconst captain = teamData.players.find(p => p.is_captain === true);\n\n// ================================\n// CALCULATE LOSSES\n// ================================\n\nconst rankedPlayers = players.map(p => {\n  const daily_loss = round1(calculateDailyLoss(p.weights, currentDay));\n  const total_loss = round1(calculateTotalLoss(p.weights, currentDay));\n\n  return {\n    name: p.name,\n    avatar: p.avatar,\n    daily_loss,\n    total_loss\n  };\n});\n\n// ================================\n// SORT BY DAILY LOSS (DESC)\n// ================================\n\nrankedPlayers.sort((a, b) => {\n  if (a.daily_loss === null) return 1;\n  if (b.daily_loss === null) return -1;\n  if (b.daily_loss !== a.daily_loss) {\n    return b.daily_loss - a.daily_loss;\n  }\n  return a.name.localeCompare(b.name, \"vi\");\n});\n\n// ================================\n// TOP 8 ONLY\n// ================================\n\nconst top8 = rankedPlayers.slice(0, 8);\n\n// ================================\n// FORMAT FOR TEMPLATE (FIX LINE BREAK)\n// ================================\n\nfunction formatDailyDisplay(val) {\n  // Hiển thị cho cột \"Hôm nay\" - CÓ cảnh báo khi tăng cân\n  if (!Number.isFinite(val)) return \"--\";\n\n  if (val > 0) {\n    // Giảm cân: -0.4\n    return \"-\" + val.toFixed(1);\n  }\n\n  if (val < 0) {\n    // Tăng cân: ⚠️ +0.3\n    // Sử dụng \\u00A0 (Non-breaking space) thay vì khoảng trắng thường\n    return \"⚠️\\u00A0+\" + Math.abs(val).toFixed(1);\n  }\n\n  return \"0.0\";\n}\n\nfunction formatTotalDisplay(val) {\n  // Hiển thị cho cột \"Vòng này\" - KHÔNG có cảnh báo\n  if (!Number.isFinite(val)) return \"--\";\n\n  if (val > 0) {\n    // Giảm cân: -0.4\n    return \"-\" + val.toFixed(1);\n  }\n\n  if (val < 0) {\n    // Tăng cân: +0.3 (KHÔNG có ⚠️)\n    return \"+\" + Math.abs(val).toFixed(1);\n  }\n\n  return \"0.0\";\n}\n\ntop8.forEach((p, i) => {\n  p.rank = String(i + 1);\n  p.today_display = formatDailyDisplay(p.daily_loss);\n  p.round_display = formatTotalDisplay(p.total_loss);\n});\n\n// ================================\n// TEAM TODAY LOSS (FOOTER)\n// ================================\n\nconst team_today_loss = top8.reduce((sum, p) => {\n  const v = Number(p.daily_loss);\n  if (!Number.isFinite(v) || v <= 0) return sum;\n  return sum + v;\n}, 0);\n\n// ================================\n// FINAL PLAYERS ARRAY\n// ================================\n\nconst finalPlayers = [...top8];\n\nif (captain) {\n  finalPlayers.push({\n    name: captain.name,\n    avatar: captain.avatar,\n    is_captain: true,\n    rank: \"ĐỘI TRƯỞNG\"\n  });\n}\n\n// ================================\n// TEXT REPORT (Tạo nội dung tin nhắn)\n// ================================\n// Tạo sẵn text report để Queue node sử dụng\nlet textReport = `🏆 BẢNG XẾP HẠNG: ${teamData.team_name}\\n`;\ntextReport += `📅 Vòng: ${teamData.round_name || teamData.round_number || ''} - Ngày ${currentDay}\\n`;\ntextReport += `📉 Đội giảm hôm nay: ${team_today_loss.toFixed(1)}kg\\n\\n`;\ntextReport += `Top thành viên:\\n`;\n\ntop8.forEach(p => {\n  textReport += `#${p.rank} ${p.name}: ${p.today_display}kg (Tổng: ${p.round_display})\\n`;\n});\ntextReport += `\\n👉 Hãy tiếp tục cố gắng nhé!`;\n\n\n// ================================\n// OUTPUT\n// ================================\n\nreturn {\n  json: {\n    team_name: teamData.team_name,\n    round_number: teamData.round_name ?? teamData.round_number ?? \"\",\n    day_number: currentDay,\n    team_today_loss: Number(team_today_loss.toFixed(1)),\n    \n    // TRUYỀN ID ĐỘI TRƯỞNG & TEXT REPORT\n    captain_id: teamData.captain_id,\n    text_report: textReport,\n    \n    players: finalPlayers\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        336
+      ],
+      "id": "225c2624-758b-480b-805b-2efb8d42de41",
+      "name": "Rank Players (Top 8)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://render.nexme.vn/render",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "goPT@marathon10000TV"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"template\": \"daily_leaderboard.hbs\",\n  \"filename_prefix\": \"team_leader\",\n  \"width\": 1080,\n  \"height\": 1920,\n  \"data\": {\n    \"team_name\": $json.team_name,\n    \"round_number\": $json.round_number,\n    \"lap_number\": $json.lap_number,\n    \"day_number\": $json.day_number,\n    \"team_today_loss\": $json.team_today_loss,\n    \"players\": $json.players\n  }\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1296,
+        336
+      ],
+      "id": "d64a8b1e-1097-4de8-afa5-b09eda570f59",
+      "name": "Render Team Leaderboard",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "tableId": "bot_queue",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "bot_type",
+              "fieldValue": "TEAM_LEADER"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "pending"
+            },
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ {\n  \"recipient\": {\n    \"id\": $('Rank Players (Top 8)').item.json.captain_id\n  },\n  \"message\": {\n    \"text\": $('Rank Players (Top 8)').item.json.text_report,\n    \"attachment\": {\n      \"type\": \"image\",\n      \"payload\": {\n        \"url\": $json.image_url || $json.url\n      }\n    }\n  }\n} }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        240
+      ],
+      "id": "0182d68b-9578-4942-803d-122d6c3ab0b9",
+      "name": "Queue: Team Success",
+      "credentials": {
+        "supabaseApi": {
+          "id": "vEyQn3WuVDmUMZO6",
+          "name": "Supabase marathon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "bot_queue",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "bot_type",
+              "fieldValue": "TEAM_LEADER"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "pending"
+            },
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ {\n  \"recipient\": {\n    \"id\": $('Rank Players (Top 8)').item.json.captain_id\n  },\n  \"message\": {\n    \"text\": $('Rank Players (Top 8)').item.json.text_report + \"\\n\\n(⚠️ Ảnh bảng xếp hạng đang được bảo trì, bạn xem tạm số liệu ở trên nhé!)\"\n  }\n} }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        432
+      ],
+      "id": "a1918cb1-4d44-4758-be6e-507e880f79ba",
+      "name": "Queue: Team Fallback",
+      "credentials": {
+        "supabaseApi": {
+          "id": "vEyQn3WuVDmUMZO6",
+          "name": "Supabase marathon"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Z9nU5cQwEDeSKAn-Ba5HFpHUhQQyOoSxukaO7mG5DV4",
+          "mode": "list",
+          "cachedResultName": "marathon",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Z9nU5cQwEDeSKAn-Ba5HFpHUhQQyOoSxukaO7mG5DV4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 345514191,
+          "mode": "list",
+          "cachedResultName": "marathon",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Z9nU5cQwEDeSKAn-Ba5HFpHUhQQyOoSxukaO7mG5DV4/edit#gid=345514191"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        400,
+        416
+      ],
+      "id": "9c15a04e-db3f-4487-b058-2dcaa62b3353",
+      "name": "Get Marathon Data1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Si9LuVmzbdJQ3PJB",
+          "name": "Google Sheets dqcong"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "team-render-success-condition",
+              "leftValue": "={{ $json.image_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        336
+      ],
+      "id": "1f9ae408-e02c-4bb8-8002-220260427773",
+      "name": "Check: Render Success?1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        176,
+        512
+      ],
+      "id": "6ae3f682-08d6-43a8-b407-ff217306af30",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Cxhi6bFhwv0XbUF4",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Cxhi6bFhwv0XbUF4",
+          "cachedResultName": "3.send_image_zalo_captain"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1968,
+        336
+      ],
+      "id": "784a7556-c707-4bd8-922a-08f11497ebbd",
+      "name": "Call 'send_image_zalo_captain'"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        848,
+        416
+      ],
+      "id": "89ae5f57-44a0-408c-9c71-6fe5ea089eca",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2192,
+        416
+      ],
+      "id": "cfa9f28c-c15f-4596-b818-87d82c5c99d4",
+      "name": "Wait",
+      "webhookId": "118e4014-91ef-4cde-87dd-c6176c319e3e"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 12,
+              "triggerAtMinute": 51
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        176,
+        320
+      ],
+      "id": "732c4866-32f2-4c42-ac85-1c29045d3ffa",
+      "name": "Schedule Trigger",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        64
+      ],
+      "id": "f1426dba-a518-4a63-92b7-536b3b3b0461",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Group By Team": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Players (Top 8)": {
+      "main": [
+        [
+          {
+            "node": "Render Team Leaderboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Team Leaderboard": {
+      "main": [
+        [
+          {
+            "node": "Check: Render Success?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Marathon Data1": {
+      "main": [
+        [
+          {
+            "node": "Group By Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Render Success?1": {
+      "main": [
+        [
+          {
+            "node": "Queue: Team Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Queue: Team Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Marathon Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue: Team Success": {
+      "main": [
+        [
+          {
+            "node": "Call 'send_image_zalo_captain'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue: Team Fallback": {
+      "main": [
+        [
+          {
+            "node": "Call 'send_image_zalo_captain'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'send_image_zalo_captain'": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Rank Players (Top 8)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Marathon Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get Marathon Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "executionTimeout": 300,
+    "errorWorkflow": "hORJlWLQ84vPW1tX"
+  },
+  "versionId": "36a862a7-3944-4477-b656-071bf42fb749",
+  "meta": {
+    "instanceId": "bbf85f6bf60f4f428f9bb800a84af65104d12b54938b900d8e31b5ec5fa02d99"
+  },
+  "id": "9fD7jTNV9LbMYGJu",
+  "tags": []
+}
