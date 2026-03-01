@@ -14,6 +14,7 @@ const ALLOWED_AVATAR_DOMAINS = [
   'secure.gravatar.com',
   'avatars.githubusercontent.com',
   'github.com',
+  'supabase.co', // Supabase Storage
 ];
 
 // Blocked IP ranges (private networks)
