@@ -305,7 +305,7 @@ export default function DashboardPage() {
             },
             stats: isFinished
               ? playerStats
-              : { start_weight: playerStats.start_weight, current_weight: null, delta_weight: null },
+              : { start_weight: playerStats.start_weight, current_weight: null, delta_weight: playerStats.delta_weight },
             is_finished: isFinished
           };
 
