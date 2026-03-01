@@ -291,7 +291,7 @@ export default function DashboardPage() {
 
           // Template expects: player.name, player.team, player.avatar, player.round_name, player.info_line
           // Also expects: stats (start_weight, current_weight, delta_weight), player.grid array
-          const isFinished = player.day10 !== null;
+          const isFinished = selectedDay === 10;
           const playerStats = buildPlayerStats(player);
 
           const renderData = {
