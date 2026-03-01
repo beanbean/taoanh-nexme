@@ -6,6 +6,12 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
