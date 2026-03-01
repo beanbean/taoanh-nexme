@@ -73,7 +73,18 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Avatar API] Error proxying avatar:', error);
-    // Return empty dataUrl on error instead of throwing
-    return NextResponse.json({ error: 'Failed to fetch avatar', details: String(error), dataUrl: '' }, { status: 200 });
+
+    // Return appropriate error status based on error type
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Request timeout', dataUrl: '' },
+        { status: 504 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to fetch avatar', dataUrl: '' },
+      { status: 500 }
+    );
   }
 }
