@@ -13,6 +13,7 @@ const ALLOWED_DOWNLOAD_DOMAINS = [
   'avatars.githubusercontent.com',
   'github.com',
   'supabase.co', // For Supabase storage URLs
+  'nexme.vn', // Render API image URLs
 ];
 
 function isAllowedDownloadUrl(urlString: string): { valid: boolean; error?: string } {

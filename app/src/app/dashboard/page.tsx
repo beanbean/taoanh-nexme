@@ -291,6 +291,9 @@ export default function DashboardPage() {
 
           // Template expects: player.name, player.team, player.avatar, player.round_name, player.info_line
           // Also expects: stats (start_weight, current_weight, delta_weight), player.grid array
+          const isFinished = player[`day${selectedDay}` as keyof Player] !== null;
+          const playerStats = buildPlayerStats(player);
+
           const renderData = {
             player: {
               name: player.player_name || 'Người chơi',
@@ -300,8 +303,10 @@ export default function DashboardPage() {
               info_line: dataset.time_range || '',
               grid: buildPlayerGrid(player)
             },
-            stats: buildPlayerStats(player),
-            is_finished: player[`day${selectedDay}` as keyof Player] !== null
+            stats: isFinished
+              ? playerStats
+              : { start_weight: playerStats.start_weight, current_weight: null, delta_weight: null },
+            is_finished: isFinished
           };
 
           const request: RenderRequest = {

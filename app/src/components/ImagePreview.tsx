@@ -16,6 +16,22 @@ export default function ImagePreview({ images, onClose }: ImagePreviewProps) {
     try {
       const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
       const response = await fetch(downloadUrl);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('Download API error:', errorData);
+        alert('Lỗi khi tải ảnh. Vui lòng thử lại.');
+        return;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const errorData = await response.json();
+        console.error('Download API returned error:', errorData);
+        alert('Lỗi khi tải ảnh. Vui lòng thử lại.');
+        return;
+      }
+
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
