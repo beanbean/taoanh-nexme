@@ -28,7 +28,7 @@ export default function DashboardPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
   const [imageType, setImageType] = useState<'personal' | 'team'>('personal');
-  const [selectedDay, setSelectedDay] = useState<number>(10);
+  const [selectedDay, setSelectedDay] = useState<number>(-1);
   const [renderedImages, setRenderedImages] = useState<RenderedImage[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -286,6 +286,10 @@ export default function DashboardPage() {
   }
 
   async function handleGenerateImages() {
+    if (selectedDay < 0) {
+      alert('Vui lòng chọn ngày kết thúc');
+      return;
+    }
     if (!dataset.team_name) {
       alert('Vui lòng nhập tên đội');
       return;
@@ -970,22 +974,25 @@ export default function DashboardPage() {
           {/* Day Selector */}
           <div className="mb-5">
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Chọn ngày kết thúc (Ngày 0 → Ngày {selectedDay})
+              Chọn ngày kết thúc <span className="text-red-500">*</span>
             </label>
             <select
               value={selectedDay}
               onChange={(e) => setSelectedDay(parseInt(e.target.value))}
               className="input-base"
             >
+              <option value={-1} disabled>-- Chọn ngày --</option>
               {Array.from({ length: 11 }, (_, i) => (
                 <option key={i} value={i}>
                   Ngày {i} {i === 0 ? '(Bắt đầu)' : i === 10 ? '(Kết thúc marathon)' : ''}
                 </option>
               ))}
             </select>
-            <p className="text-xs text-text-tertiary mt-1.5">
-              Ảnh sẽ chỉ hiển thị dữ liệu từ ngày 0 đến ngày {selectedDay}. Dữ liệu sau ngày {selectedDay} sẽ không được tính.
-            </p>
+            {selectedDay >= 0 && (
+              <p className="text-xs text-text-tertiary mt-1.5">
+                Ảnh sẽ chỉ hiển thị dữ liệu từ ngày 0 đến ngày {selectedDay}. Dữ liệu sau ngày {selectedDay} sẽ không được tính.
+              </p>
+            )}
           </div>
 
           {/* Player Selection List (only for personal images) */}
