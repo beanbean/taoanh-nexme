@@ -287,7 +287,7 @@ export default function DashboardPage() {
 
   async function handleGenerateImages() {
     if (selectedDay < 0) {
-      alert('Vui lòng chọn ngày kết thúc');
+      alert('Vui lòng chọn ngày hiện tại để tạo ảnh');
       return;
     }
     if (!dataset.team_name) {
@@ -974,7 +974,7 @@ export default function DashboardPage() {
           {/* Day Selector */}
           <div className="mb-5">
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Chọn ngày kết thúc <span className="text-red-500">*</span>
+              Chọn ngày hiện tại để tạo ảnh <span className="text-red-500">*</span>
             </label>
             <select
               value={selectedDay}
