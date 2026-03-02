@@ -414,13 +414,13 @@ export default function DashboardPage() {
       });
     }
 
-    // Sort non-captain players by round_display (most weight loss first)
+    // Sort non-captain players by today_display (most daily weight loss first)
     const captains = playerData.filter(p => p.is_captain);
     const members = playerData.filter(p => !p.is_captain);
 
     members.sort((a, b) => {
-      const aLoss = parseFloat(a.round_display);
-      const bLoss = parseFloat(b.round_display);
+      const aLoss = parseFloat(a.today_display);
+      const bLoss = parseFloat(b.today_display);
       return aLoss - bLoss;
     });
 
@@ -430,9 +430,9 @@ export default function DashboardPage() {
 
     // Mark the top player(s) - handle ties (cùng điểm thì cùng có vương miện)
     if (members.length > 0) {
-      const topLoss = members[0].round_display;
+      const topLoss = members[0].today_display;
       members.forEach(player => {
-        if (player.round_display === topLoss) {
+        if (player.today_display === topLoss) {
           player.is_top = true;
         }
       });
