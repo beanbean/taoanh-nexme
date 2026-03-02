@@ -263,7 +263,16 @@ export default function DashboardPage() {
   }
 
   function buildPlayerStats(player: Player): { start_weight: number | null; current_weight: number | null; delta_weight: number | null } {
-    const startWeight = player.day0;
+    // Find the first day with weight data as start weight
+    let startWeight: number | null = null;
+    for (let i = 0; i <= selectedDay; i++) {
+      const w = player[`day${i}` as keyof Player] as number | null;
+      if (w !== null && w !== undefined) {
+        startWeight = w;
+        break;
+      }
+    }
+    // Find the latest day with weight data as current weight
     let currentWeight: number | null = null;
     for (let i = selectedDay; i >= 0; i--) {
       const w = player[`day${i}` as keyof Player] as number | null;
@@ -272,7 +281,7 @@ export default function DashboardPage() {
         break;
       }
     }
-    const deltaWeight = (startWeight !== null && currentWeight !== null) ? currentWeight - startWeight : null;
+    const deltaWeight = (startWeight !== null && currentWeight !== null && startWeight !== currentWeight) ? currentWeight - startWeight : null;
     return { start_weight: startWeight, current_weight: currentWeight, delta_weight: deltaWeight };
   }
 
@@ -395,14 +404,30 @@ export default function DashboardPage() {
         }
       }
 
-      const startWeight = player.day0;
+      // Find the first day with weight data as start weight
+      let startWeight: number | null = null;
+      for (let d = 0; d <= dayNumber; d++) {
+        const w = player[`day${d}` as keyof Player] as number | null;
+        if (w !== null && w !== undefined) {
+          startWeight = w;
+          break;
+        }
+      }
       const isCaptain = player.role === 'captain';
 
       // Skip players without any weight data
       if (startWeight === null && latestWeight === null) continue;
 
       const todayWeight = player[`day${dayNumber}` as keyof Player] as number | null;
-      const yesterdayWeight = dayNumber > 0 ? player[`day${dayNumber - 1}` as keyof Player] as number | null : null;
+      // Find nearest previous day with weight data
+      let yesterdayWeight: number | null = null;
+      for (let d = dayNumber - 1; d >= 0; d--) {
+        const w = player[`day${d}` as keyof Player] as number | null;
+        if (w !== null && w !== undefined) {
+          yesterdayWeight = w;
+          break;
+        }
+      }
 
       const todayLoss = (todayWeight !== null && yesterdayWeight !== null) ? yesterdayWeight - todayWeight : 0;
       const roundLoss = (startWeight !== null && latestWeight !== null) ? startWeight - latestWeight : 0;
