@@ -238,13 +238,23 @@ export default function DashboardPage() {
 
   function buildPlayerGrid(player: Player): Array<{ day: number; delta_from_start: number | null }> {
     const grid = [];
-    const startWeight = player.day0;
     for (let i = 1; i <= 10; i++) {
       let delta_from_start: number | null = null;
       if (i <= selectedDay) {
         const dayWeight = player[`day${i}` as keyof Player] as number | null;
-        if (dayWeight !== null && dayWeight !== undefined && startWeight !== null && startWeight !== undefined) {
-          delta_from_start = dayWeight - startWeight;
+        if (dayWeight !== null && dayWeight !== undefined) {
+          // Find the nearest previous day with weight data
+          let prevWeight: number | null = null;
+          for (let d = i - 1; d >= 0; d--) {
+            const w = player[`day${d}` as keyof Player] as number | null;
+            if (w !== null && w !== undefined) {
+              prevWeight = w;
+              break;
+            }
+          }
+          if (prevWeight !== null) {
+            delta_from_start = dayWeight - prevWeight;
+          }
         }
       }
       grid.push({ day: i, delta_from_start });
