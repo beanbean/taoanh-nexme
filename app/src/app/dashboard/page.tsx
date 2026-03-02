@@ -281,7 +281,7 @@ export default function DashboardPage() {
         break;
       }
     }
-    const deltaWeight = (startWeight !== null && currentWeight !== null && startWeight !== currentWeight) ? currentWeight - startWeight : null;
+    const deltaWeight = (startWeight !== null && currentWeight !== null) ? currentWeight - startWeight : null;
     return { start_weight: startWeight, current_weight: currentWeight, delta_weight: deltaWeight };
   }
 
