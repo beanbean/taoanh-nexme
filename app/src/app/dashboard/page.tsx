@@ -220,20 +220,9 @@ export default function DashboardPage() {
     }
   }
 
-  async function avatarToDataUrl(url: string | null): Promise<string> {
+  function getAvatarUrl(url: string | null): string {
     if (!url || url.trim() === '') return '';
-    try {
-      const res = await fetch(`/api/avatar?url=${encodeURIComponent(url)}`);
-      if (!res.ok) {
-        console.error('[avatarToDataUrl] Fetch failed:', res.status, res.statusText);
-        return '';
-      }
-      const data = await res.json();
-      return data.dataUrl || '';
-    } catch (err) {
-      console.error('[avatarToDataUrl] Error:', err);
-      return '';
-    }
+    return url;
   }
 
   function buildPlayerGrid(player: Player): Array<{ day: number; delta_from_start: number | null }> {
@@ -308,9 +297,7 @@ export default function DashboardPage() {
         }
 
         for (const player of selectedPlayersList) {
-          console.log('[Dashboard] Processing player:', player.player_name, 'avatar_url:', player.avatar_url?.substring(0, 80));
-          const avatarDataUrl = player.avatar_url ? await avatarToDataUrl(player.avatar_url) : '';
-          console.log('[Dashboard] Converted avatar, type:', typeof avatarDataUrl, 'length:', avatarDataUrl.length, 'starts with:', avatarDataUrl.substring(0, 50));
+          const avatarUrl = getAvatarUrl(player.avatar_url);
 
           // Template expects: player.name, player.team, player.avatar, player.round_name, player.info_line
           // Also expects: stats (start_weight, current_weight, delta_weight), player.grid array
@@ -321,7 +308,7 @@ export default function DashboardPage() {
             player: {
               name: player.player_name || 'Người chơi',
               team: dataset.team_name || 'Đội',
-              avatar: avatarDataUrl || 'https://ui-avatars.com/api/?name=User',
+              avatar: avatarUrl || 'https://ui-avatars.com/api/?name=User',
               round_name: dataset.round_name || 'Marathon',
               info_line: dataset.time_range || '',
               grid: buildPlayerGrid(player)
@@ -440,11 +427,11 @@ export default function DashboardPage() {
         teamTodayLoss += todayLoss;
       }
 
-      const avatarDataUrl = player.avatar_url ? await avatarToDataUrl(player.avatar_url) : '';
+      const avatarUrl = getAvatarUrl(player.avatar_url);
 
       playerData.push({
         name: player.player_name || 'Người chơi',
-        avatar: avatarDataUrl || 'https://ui-avatars.com/api/?name=User',
+        avatar: avatarUrl || 'https://ui-avatars.com/api/?name=User',
         rank: '0',
         today_display: isCaptain ? '' : (todayLoss >= 0 ? `-${todayLoss.toFixed(1)}` : `+${Math.abs(todayLoss).toFixed(1)}`),
         round_display: isCaptain ? '' : (roundLoss >= 0 ? `-${roundLoss.toFixed(1)}` : `+${Math.abs(roundLoss).toFixed(1)}`),

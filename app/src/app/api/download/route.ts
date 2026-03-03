@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidUrl, sanitizeFilename, isValidImageContentType } from '@/lib/security';
 
-// Allowed domains for download (same as avatar for now)
 const ALLOWED_DOWNLOAD_DOMAINS = [
   'googleusercontent.com',
   'lh3.google.com',
@@ -12,36 +11,28 @@ const ALLOWED_DOWNLOAD_DOMAINS = [
   'secure.gravatar.com',
   'avatars.githubusercontent.com',
   'github.com',
-  'supabase.co', // For Supabase storage URLs
-  'nexme.vn', // Render API image URLs
+  'supabase.co',
+  'nexme.vn',
 ];
 
 function isAllowedDownloadUrl(urlString: string): { valid: boolean; error?: string } {
-  // First, basic URL validation
   const basicCheck = isValidUrl(urlString);
-  if (!basicCheck.valid) {
-    return basicCheck;
-  }
+  if (!basicCheck.valid) return basicCheck;
 
   try {
     const url = new URL(urlString);
     const hostname = url.hostname.toLowerCase();
 
-    // Check if hostname ends with any allowed domain
-    const isAllowed = ALLOWED_DOWNLOAD_DOMAINS.some(domain => {
-      return hostname === domain || hostname.endsWith('.' + domain);
-    });
+    const isAllowed = ALLOWED_DOWNLOAD_DOMAINS.some(domain =>
+      hostname === domain || hostname.endsWith('.' + domain)
+    );
 
     if (!isAllowed) {
-      return {
-        valid: false,
-        error: `Domain not allowed. Allowed domains: ${ALLOWED_DOWNLOAD_DOMAINS.join(', ')}`
-      };
+      return { valid: false, error: 'Domain not allowed' };
     }
-
     return { valid: true };
   } catch {
-    return { valid: false, error: 'Invalid URL format.' };
+    return { valid: false, error: 'Invalid URL format' };
   }
 }
 
@@ -53,62 +44,62 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
   }
 
-  // Security: Validate URL to prevent SSRF
   const urlValidation = isAllowedDownloadUrl(url);
   if (!urlValidation.valid) {
-    console.error('[Download API] URL validation failed:', urlValidation.error);
     return NextResponse.json(
       { error: urlValidation.error || 'Invalid URL' },
       { status: 400 }
     );
   }
 
-  // Security: Sanitize filename to prevent path traversal
   const safeFilename = sanitizeFilename(filename);
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for downloads
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    const response = await fetch(url, {
-      signal: controller.signal,
-    });
+    const response = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (!response.ok) {
       return NextResponse.json({ error: 'Failed to fetch image' }, { status: response.status });
     }
 
-    // Security: Validate content type
     const contentType = response.headers.get('content-type') || '';
     if (!isValidImageContentType(contentType)) {
-      console.error('[Download API] Invalid content type:', contentType);
       return NextResponse.json(
-        { error: 'Invalid content type. Only images are allowed.' },
+        { error: 'Invalid content type' },
         { status: 400 }
       );
     }
 
-    // Security: Limit file size (max 10MB for downloads)
     const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
-      console.error('[Download API] File too large:', contentLength);
       return NextResponse.json(
         { error: 'File too large. Maximum size is 10MB.' },
         { status: 400 }
       );
     }
 
-    const blob = await response.blob();
-    const headers = new Headers();
-    headers.set('Content-Type', blob.type || 'image/png');
-    headers.set('Content-Disposition', `attachment; filename="${safeFilename}"`);
-    // Security: Add headers to prevent XSS
-    headers.set('X-Content-Type-Options', 'nosniff');
+    // Stream the response body directly instead of buffering into blob
+    if (!response.body) {
+      return NextResponse.json({ error: 'Empty response body' }, { status: 502 });
+    }
 
-    return new NextResponse(blob, { headers });
+    const headers = new Headers();
+    headers.set('Content-Type', contentType || 'image/png');
+    headers.set('Content-Disposition', `attachment; filename="${safeFilename}"`);
+    headers.set('X-Content-Type-Options', 'nosniff');
+    if (contentLength) {
+      headers.set('Content-Length', contentLength);
+    }
+
+    return new NextResponse(response.body, { headers });
   } catch (error) {
-    console.error('Error proxying download:', error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json({ error: 'Download timeout' }, { status: 504 });
+    }
+    console.error('[Download API] Error:', error);
     return NextResponse.json({ error: 'Download failed' }, { status: 500 });
   }
 }
