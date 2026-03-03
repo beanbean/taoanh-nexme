@@ -220,9 +220,25 @@ export default function DashboardPage() {
     }
   }
 
-  function getAvatarUrl(url: string | null): string {
+  async function avatarToBase64(url: string | null): Promise<string> {
     if (!url || url.trim() === '') return '';
-    return url;
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL('image/jpeg', 0.8);
+    } catch {
+      return '';
+    }
   }
 
   function buildPlayerGrid(player: Player): Array<{ day: number; delta_from_start: number | null }> {
@@ -297,7 +313,7 @@ export default function DashboardPage() {
         }
 
         for (const player of selectedPlayersList) {
-          const avatarUrl = getAvatarUrl(player.avatar_url);
+          const avatarDataUrl = await avatarToBase64(player.avatar_url);
 
           // Template expects: player.name, player.team, player.avatar, player.round_name, player.info_line
           // Also expects: stats (start_weight, current_weight, delta_weight), player.grid array
@@ -308,7 +324,7 @@ export default function DashboardPage() {
             player: {
               name: player.player_name || 'Người chơi',
               team: dataset.team_name || 'Đội',
-              avatar: avatarUrl || 'https://ui-avatars.com/api/?name=User',
+              avatar: avatarDataUrl || 'https://ui-avatars.com/api/?name=User',
               round_name: dataset.round_name || 'Marathon',
               info_line: dataset.time_range || '',
               grid: buildPlayerGrid(player)
@@ -427,11 +443,11 @@ export default function DashboardPage() {
         teamTodayLoss += todayLoss;
       }
 
-      const avatarUrl = getAvatarUrl(player.avatar_url);
+      const avatarDataUrl = await avatarToBase64(player.avatar_url);
 
       playerData.push({
         name: player.player_name || 'Người chơi',
-        avatar: avatarUrl || 'https://ui-avatars.com/api/?name=User',
+        avatar: avatarDataUrl || 'https://ui-avatars.com/api/?name=User',
         rank: '0',
         today_display: isCaptain ? '' : (todayLoss >= 0 ? `-${todayLoss.toFixed(1)}` : `+${Math.abs(todayLoss).toFixed(1)}`),
         round_display: isCaptain ? '' : (roundLoss >= 0 ? `-${roundLoss.toFixed(1)}` : `+${Math.abs(roundLoss).toFixed(1)}`),
