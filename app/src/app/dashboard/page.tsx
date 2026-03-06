@@ -438,12 +438,16 @@ export default function DashboardPage() {
 
       const avatarUrl = getAvatarUrl(player.avatar_url);
 
+      // Format display values - captain shows empty space character to prevent template fallback
+      const todayDisplay = todayLoss >= 0 ? `-${todayLoss.toFixed(1)}` : `+${Math.abs(todayLoss).toFixed(1)}`;
+      const roundDisplay = roundLoss >= 0 ? `-${roundLoss.toFixed(1)}` : `+${Math.abs(roundLoss).toFixed(1)}`;
+
       playerData.push({
         name: player.player_name || 'Người chơi',
         avatar: avatarUrl || 'https://ui-avatars.com/api/?name=User',
         rank: '0',
-        today_display: isCaptain ? '' : (todayLoss >= 0 ? `-${todayLoss.toFixed(1)}` : `+${Math.abs(todayLoss).toFixed(1)}`),
-        round_display: isCaptain ? '' : (roundLoss >= 0 ? `-${roundLoss.toFixed(1)}` : `+${Math.abs(roundLoss).toFixed(1)}`),
+        today_display: isCaptain ? ' ' : todayDisplay,
+        round_display: isCaptain ? ' ' : roundDisplay,
         is_captain: isCaptain,
         is_top: false,
       });
