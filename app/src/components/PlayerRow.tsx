@@ -142,7 +142,7 @@ export default function PlayerRow({ player, index, hasCaptain, checked, onCheckC
             <input
               type="number"
               step="0.1"
-              value={player[`day${day}` as keyof Player] as number | '' || ''}
+              value={player[`day${day}` as keyof Player] !== null && player[`day${day}` as keyof Player] !== undefined ? (player[`day${day}` as keyof Player] as number) : ''}
               onChange={(e) => handleWeightChange(day, e.target.value)}
               onBlur={() => onChange(player)}
               placeholder="kg"
