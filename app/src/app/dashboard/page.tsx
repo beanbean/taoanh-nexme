@@ -220,26 +220,10 @@ export default function DashboardPage() {
     }
   }
 
-  async function avatarToBase64(url: string | null): Promise<string> {
+  // Return avatar URL directly - render API fetches avatars server-side
+  function getAvatarUrl(url: string | null): string {
     if (!url || url.trim() === '') return '';
-    try {
-      // Use /api/avatar proxy to avoid CORS issues, then convert to base64
-      const proxyUrl = `/api/avatar?url=${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error('Avatar proxy failed');
-
-      const contentType = response.headers.get('content-type') || 'image/jpeg';
-      const blob = await response.blob();
-      return await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string || '');
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      // Fallback: return original URL if conversion fails
-      return url;
-    }
+    return url;
   }
 
   function buildPlayerGrid(player: Player): Array<{ day: number; delta_from_start: number | null }> {
@@ -314,7 +298,7 @@ export default function DashboardPage() {
         }
 
         for (const player of selectedPlayersList) {
-          const avatarDataUrl = await avatarToBase64(player.avatar_url);
+          const avatarUrl = getAvatarUrl(player.avatar_url);
 
           // Template expects: player.name, player.team, player.avatar, player.round_name, player.info_line
           // Also expects: stats (start_weight, current_weight, delta_weight), player.grid array
@@ -325,7 +309,7 @@ export default function DashboardPage() {
             player: {
               name: player.player_name || 'Người chơi',
               team: dataset.team_name || 'Đội',
-              avatar: avatarDataUrl || 'https://ui-avatars.com/api/?name=User',
+              avatar: avatarUrl || 'https://ui-avatars.com/api/?name=User',
               round_name: dataset.round_name || 'Marathon',
               info_line: dataset.time_range || '',
               grid: buildPlayerGrid(player)
@@ -357,6 +341,8 @@ export default function DashboardPage() {
               filename: result.filename || 'image.png',
               playerName: player.player_name,
             });
+          } else {
+            console.error('[Render] Failed for player:', player.player_name, result.error);
           }
         }
       } else {
@@ -382,6 +368,8 @@ export default function DashboardPage() {
             url: result.image_url,
             filename: result.filename || 'team.png',
           });
+        } else {
+          console.error('[Render] Team render failed:', result.error);
         }
       }
 
@@ -389,7 +377,7 @@ export default function DashboardPage() {
       if (images.length > 0) {
         setShowPreview(true);
       } else {
-        alert('Không thể tạo ảnh. Vui lòng thử lại.');
+        alert('Không thể tạo ảnh. Server render có thể đang gặp sự cố. Vui lòng thử lại sau.');
       }
     } catch (error) {
       console.error('Error generating images:', error);
@@ -448,11 +436,11 @@ export default function DashboardPage() {
         teamTodayLoss += todayLoss;
       }
 
-      const avatarDataUrl = await avatarToBase64(player.avatar_url);
+      const avatarUrl = getAvatarUrl(player.avatar_url);
 
       playerData.push({
         name: player.player_name || 'Người chơi',
-        avatar: avatarDataUrl || 'https://ui-avatars.com/api/?name=User',
+        avatar: avatarUrl || 'https://ui-avatars.com/api/?name=User',
         rank: '0',
         today_display: isCaptain ? '' : (todayLoss >= 0 ? `-${todayLoss.toFixed(1)}` : `+${Math.abs(todayLoss).toFixed(1)}`),
         round_display: isCaptain ? '' : (roundLoss >= 0 ? `-${roundLoss.toFixed(1)}` : `+${Math.abs(roundLoss).toFixed(1)}`),
