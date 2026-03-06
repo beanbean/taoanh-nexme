@@ -223,21 +223,22 @@ export default function DashboardPage() {
   async function avatarToBase64(url: string | null): Promise<string> {
     if (!url || url.trim() === '') return '';
     try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Failed to load image'));
-        img.src = url;
+      // Use /api/avatar proxy to avoid CORS issues, then convert to base64
+      const proxyUrl = `/api/avatar?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error('Avatar proxy failed');
+
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const blob = await response.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string || '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(blob);
       });
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      return canvas.toDataURL('image/jpeg', 0.8);
     } catch {
-      return '';
+      // Fallback: return original URL if conversion fails
+      return url;
     }
   }
 

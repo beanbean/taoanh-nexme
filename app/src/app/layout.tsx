@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import './globals.css';
 
 const inter = Inter({
@@ -25,7 +26,9 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning className={inter.variable}>
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <ClientErrorBoundary>
+          {children}
+        </ClientErrorBoundary>
       </body>
     </html>
   );
