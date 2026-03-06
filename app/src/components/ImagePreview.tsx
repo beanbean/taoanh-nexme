@@ -12,6 +12,13 @@ export default function ImagePreview({ images, onClose }: ImagePreviewProps) {
   const [downloading, setDownloading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Guard: close if no images
+  const currentImage = images[currentImageIndex];
+  if (!currentImage) {
+    onClose();
+    return null;
+  }
+
   async function downloadImage(url: string, filename: string) {
     try {
       const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
@@ -124,23 +131,23 @@ export default function ImagePreview({ images, onClose }: ImagePreviewProps) {
 
             {/* Current image */}
             <div className="rounded-xl overflow-hidden border border-border-light bg-surface-tertiary">
-              {images[currentImageIndex].playerName && (
+              {currentImage.playerName && (
                 <div className="px-4 py-3 border-b border-border-light bg-surface">
                   <p className="text-sm font-medium text-text-primary">
-                    {images[currentImageIndex].playerName}
+                    {currentImage.playerName}
                   </p>
                 </div>
               )}
               <img
-                src={images[currentImageIndex].url}
-                alt={images[currentImageIndex].filename}
+                src={currentImage.url}
+                alt={currentImage.filename}
                 className="w-full h-auto"
               />
             </div>
 
             {/* Download current button */}
             <button
-              onClick={() => downloadImage(images[currentImageIndex].url, images[currentImageIndex].filename)}
+              onClick={() => downloadImage(currentImage.url, currentImage.filename)}
               className="w-full mt-4 btn-primary py-2.5 flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

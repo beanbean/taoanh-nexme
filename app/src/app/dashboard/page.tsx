@@ -386,7 +386,11 @@ export default function DashboardPage() {
       }
 
       setRenderedImages(images);
-      setShowPreview(true);
+      if (images.length > 0) {
+        setShowPreview(true);
+      } else {
+        alert('Không thể tạo ảnh. Vui lòng thử lại.');
+      }
     } catch (error) {
       console.error('Error generating images:', error);
       alert('Lỗi khi tạo ảnh. Vui lòng thử lại.');
