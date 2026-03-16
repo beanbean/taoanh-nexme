@@ -15,7 +15,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/dashboard`,
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   });
   return { data, error };
@@ -265,6 +265,36 @@ export async function upsertPlayer(player: Player, datasetId: string): Promise<s
     }
     return data?.id || null;
   }
+}
+
+export async function deleteDataset(datasetId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('marathon_datasets')
+    .delete()
+    .eq('id', datasetId);
+
+  if (error) {
+    console.error('Error deleting dataset:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function clearPlayerWeights(playerId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('marathon_players')
+    .update({
+      day0: null, day1: null, day2: null, day3: null, day4: null,
+      day5: null, day6: null, day7: null, day8: null, day9: null, day10: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', playerId);
+
+  if (error) {
+    console.error('Error clearing player weights:', error);
+    return false;
+  }
+  return true;
 }
 
 export async function deletePlayer(playerId: string): Promise<boolean> {

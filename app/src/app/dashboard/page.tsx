@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, getUser, signOut, getDataset, getAllDatasets, upsertDataset, getPlayers, upsertPlayer, clearAllData, deletePlayer, isAdmin, checkApprovalStatus, requestApproval } from '@/lib/supabase';
+import { supabase, getUser, signOut, getDataset, getAllDatasets, upsertDataset, getPlayers, upsertPlayer, clearAllData, deletePlayer, deleteDataset, clearPlayerWeights, isAdmin, checkApprovalStatus, requestApproval } from '@/lib/supabase';
 import type { MarathonDataset, Player, RenderRequest, RenderResponse, RenderedImage, PersonalRenderData, PersonalProgressData, TeamRenderData, TeamPlayerData } from '@/types';
 import PlayerRow from '@/components/PlayerRow';
 import ImagePreview from '@/components/ImagePreview';
@@ -31,6 +31,9 @@ export default function DashboardPage() {
   const [selectedDay, setSelectedDay] = useState<number>(-1);
   const [renderedImages, setRenderedImages] = useState<RenderedImage[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Undo state — lưu backup dữ liệu cân nặng trước khi xóa
+  const [undoWeights, setUndoWeights] = useState<{ playerId: string; playerName: string; weights: Record<string, number | null> } | null>(null);
 
   useEffect(() => {
     initUser();
@@ -217,6 +220,91 @@ export default function DashboardPage() {
     if (player.id) {
       selectedPlayers.delete(player.id);
       setSelectedPlayers(new Set(selectedPlayers));
+    }
+  }
+
+  async function handleDeleteDataset() {
+    if (!datasetId || !user) return;
+    const dsName = dataset.team_name || '(Chưa đặt tên)';
+    if (!confirm(`Bạn có chắc chắn muốn xóa đội "${dsName}"?\n\nTất cả người chơi trong đội này cũng sẽ bị xóa. Hành động này không thể hoàn tác.`)) {
+      return;
+    }
+
+    const success = await deleteDataset(datasetId);
+    if (success) {
+      // Reload datasets and switch to another or reset
+      const datasets = await getAllDatasets(user.id);
+      setAllDatasets(datasets);
+      if (datasets.length > 0) {
+        const latest = datasets[0];
+        setDataset(latest);
+        setDatasetId(latest.id || null);
+        const existingPlayers = await getPlayers(latest.id!);
+        setPlayers(existingPlayers);
+        const allIds = existingPlayers.filter(p => p.id).map(p => p.id!);
+        setSelectedPlayers(new Set(allIds));
+      } else {
+        setDataset({ team_name: '', round_name: 'Marathon', round_number: null, time_range: '' });
+        setDatasetId(null);
+        setPlayers([]);
+        setSelectedPlayers(new Set());
+      }
+      setUndoWeights(null);
+    } else {
+      alert('Lỗi khi xóa đội');
+    }
+  }
+
+  async function handleClearPlayerWeights(index: number) {
+    const player = players[index];
+    if (!player.id) return;
+    if (!confirm(`Xóa dữ liệu cân nặng của "${player.player_name || 'người chơi'}"?\n\nChỉ xóa số kg (Ngày 0-10), giữ nguyên thông tin người chơi.\nBạn có thể bấm "Phục hồi" để khôi phục lại.`)) {
+      return;
+    }
+
+    // Backup trước khi xóa
+    const weights: Record<string, number | null> = {};
+    for (let d = 0; d <= 10; d++) {
+      weights[`day${d}`] = player[`day${d}` as keyof Player] as number | null;
+    }
+    setUndoWeights({ playerId: player.id, playerName: player.player_name, weights });
+
+    const success = await clearPlayerWeights(player.id);
+    if (success) {
+      // Update local state
+      const updated = [...players];
+      updated[index] = {
+        ...player,
+        day0: null, day1: null, day2: null, day3: null, day4: null,
+        day5: null, day6: null, day7: null, day8: null, day9: null, day10: null,
+      };
+      setPlayers(updated);
+    } else {
+      alert('Lỗi khi xóa dữ liệu cân nặng');
+      setUndoWeights(null);
+    }
+  }
+
+  async function handleRestorePlayerWeights() {
+    if (!undoWeights) return;
+    const { playerId, weights } = undoWeights;
+    const playerIndex = players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) {
+      alert('Không tìm thấy người chơi để phục hồi');
+      setUndoWeights(null);
+      return;
+    }
+
+    // Restore to Supabase
+    const restored = { ...players[playerIndex], ...weights };
+    const savedId = await upsertPlayer(restored, datasetId!);
+    if (savedId) {
+      const updated = [...players];
+      updated[playerIndex] = restored;
+      setPlayers(updated);
+      setUndoWeights(null);
+    } else {
+      alert('Lỗi khi phục hồi dữ liệu');
     }
   }
 
@@ -762,6 +850,18 @@ export default function DashboardPage() {
                 >
                   + Đội mới
                 </button>
+                {datasetId && allDatasets.length > 0 && (
+                  <button
+                    onClick={handleDeleteDataset}
+                    className="btn-danger-sm px-3 flex items-center gap-1"
+                    title="Xóa đội đang chọn"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                    Xóa đội
+                  </button>
+                )}
               </div>
             </div>
           </section>
@@ -906,6 +1006,27 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Undo banner — hiện khi vừa xóa dữ liệu cân nặng */}
+          {undoWeights && (
+            <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200 flex items-center justify-between gap-3 fade-in">
+              <p className="text-sm text-amber-800 flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+                Đã xóa dữ liệu cân nặng của <span className="font-semibold">{undoWeights.playerName || 'người chơi'}</span>
+              </p>
+              <button
+                onClick={handleRestorePlayerWeights}
+                className="btn-outline px-3 py-1.5 text-xs flex items-center gap-1 whitespace-nowrap bg-white"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                </svg>
+                Phục hồi
+              </button>
+            </div>
+          )}
+
           <div className="space-y-3">
             {players.map((player, index) => (
               <PlayerRow
@@ -917,6 +1038,7 @@ export default function DashboardPage() {
                 onCheckChange={(checked) => handlePlayerCheck(index, checked)}
                 onChange={(updated) => handlePlayerChange(index, updated)}
                 onDelete={() => handleDeletePlayer(index)}
+                onClearWeights={() => handleClearPlayerWeights(index)}
               />
             ))}
             {players.length === 0 && (
