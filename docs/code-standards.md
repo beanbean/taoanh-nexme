@@ -1,6 +1,6 @@
 # Code Standards - taoanh.nexme.vn
 
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-06
 **Framework:** Next.js 16 + React 19 + TypeScript
 **Style Guide:** TailwindCSS 4
 
@@ -478,6 +478,70 @@ Before deploying to production:
 5. **Verify RLS policies** are in place
 6. **Test user approval workflow**
 
+## Known Pitfalls & Lessons Learned
+
+### 1. Falsy Value Trap in JSX Input `value`
+
+**Problem:** `value={data || ''}` treats `0` as falsy → input shows empty instead of `0`.
+
+```typescript
+// ❌ BUG: value=0 displays empty (0 is falsy)
+<input value={player.day5 as number | '' || ''} />
+
+// ✅ FIX: explicit null/undefined check
+<input value={player.day5 !== null && player.day5 !== undefined ? player.day5 : ''} />
+```
+
+**Rule:** Never use `||` for input value fallback when the value can be `0`. Always use explicit `!== null && !== undefined` checks.
+
+### 2. Handlebars Template Falsy String Gotcha
+
+**Problem:** Empty string `''` is falsy in Handlebars `{{#if}}`. If a template has fallback logic, sending `''` triggers the fallback → renders wrong data.
+
+```typescript
+// ❌ BUG: '' is falsy → Handlebars {{#if today_display}} = false → fallback renders raw weight
+today_display: isCaptain ? '' : calculatedValue
+
+// ✅ FIX: space ' ' is truthy → Handlebars renders it (visually empty)
+today_display: isCaptain ? ' ' : calculatedValue
+```
+
+**Rule:** When sending data to Handlebars templates, use `' '` (space) instead of `''` (empty) if you want the field to be "present but visually empty". Empty string triggers `{{else}}` blocks.
+
+### 3. Render API — Avatar URL vs Base64
+
+**Problem:** Converting avatars to base64 client-side creates huge data URLs (hundreds of KB) → JSON request body too large → render API fails or times out.
+
+```typescript
+// ❌ BAD: base64 avatar bloats request body
+const base64 = await avatarToBase64(player.avatar_url);  // ~200KB string
+await fetch('/api/render', { body: JSON.stringify({ avatar: base64 }) });
+
+// ✅ GOOD: pass URL directly, render API fetches server-side
+const avatarUrl = player.avatar_url || '';
+await fetch('/api/render', { body: JSON.stringify({ avatar: avatarUrl }) });
+```
+
+**Rule:** Pass avatar URLs directly to render API (`render.nexme.vn`). The render API runs server-side and can fetch images directly — no need for client-side base64 conversion.
+
+### 4. Guard Array Access Before Rendering
+
+**Problem:** Rendering `array[index].property` without checking if element exists → `TypeError: Cannot read properties of undefined`.
+
+```typescript
+// ❌ BUG: crashes if images is empty
+<img src={images[currentIndex].url} />
+
+// ✅ FIX: guard check first
+const current = images[currentIndex];
+if (!current) return null;
+<img src={current.url} />
+```
+
+**Rule:** Always guard array element access with null check before rendering, especially for components that receive dynamic arrays.
+
+---
+
 ## Common Patterns
 
 ### Weight Calculation
@@ -539,6 +603,10 @@ return (
 - [ ] Tailwind classes used consistently
 - [ ] Comments added for complex logic
 - [ ] No console errors in production build
+- [ ] Input `value` uses explicit null check (not `||` which treats `0` as falsy)
+- [ ] Strings sent to Handlebars templates use `' '` not `''` for "empty" values
+- [ ] Array elements are guarded before property access
+- [ ] Avatar/image data sent as URL, not base64 (avoid bloated payloads)
 
 ## Future Improvements
 
