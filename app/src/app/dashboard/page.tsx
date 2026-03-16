@@ -121,10 +121,13 @@ export default function DashboardPage() {
     if (!user) return;
     setSaving(true);
     const id = await upsertDataset(updatedDataset, user.id);
-    if (id && !datasetId) {
-      setDatasetId(id);
-      setDataset({ ...updatedDataset, id });
-      setShowNewDataset(false);
+    if (id) {
+      if (!datasetId) {
+        setDatasetId(id);
+        setDataset({ ...updatedDataset, id });
+        setShowNewDataset(false);
+      }
+      // Luôn reload danh sách đội để cập nhật tên trên dropdown
       const datasets = await getAllDatasets(user.id);
       setAllDatasets(datasets);
     }
@@ -930,6 +933,28 @@ export default function DashboardPage() {
                 placeholder="Ví dụ: 1/2-10/2/26"
               />
             </div>
+          </div>
+          {/* Nút Lưu — lưu thông tin đội và cập nhật dropdown */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => saveDataset(dataset)}
+              disabled={saving || !dataset.team_name}
+              className="btn-primary px-5 py-2 text-sm flex items-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <div className="spinner w-3.5 h-3.5" />
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Lưu
+                </>
+              )}
+            </button>
           </div>
         </section>
 
