@@ -1006,27 +1006,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Undo banner — hiện khi vừa xóa dữ liệu cân nặng */}
-          {undoWeights && (
-            <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200 flex items-center justify-between gap-3 fade-in">
-              <p className="text-sm text-amber-800 flex items-center gap-2">
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                </svg>
-                Đã xóa dữ liệu cân nặng của <span className="font-semibold">{undoWeights.playerName || 'người chơi'}</span>
-              </p>
-              <button
-                onClick={handleRestorePlayerWeights}
-                className="btn-outline px-3 py-1.5 text-xs flex items-center gap-1 whitespace-nowrap bg-white"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                </svg>
-                Phục hồi
-              </button>
-            </div>
-          )}
-
           <div className="space-y-3">
             {players.map((player, index) => (
               <PlayerRow
@@ -1035,10 +1014,12 @@ export default function DashboardPage() {
                 index={index}
                 hasCaptain={players.some((p, i) => i !== index && p.role === 'captain')}
                 checked={player.id ? selectedPlayers.has(player.id) : false}
+                canRestore={undoWeights?.playerId === player.id}
                 onCheckChange={(checked) => handlePlayerCheck(index, checked)}
                 onChange={(updated) => handlePlayerChange(index, updated)}
                 onDelete={() => handleDeletePlayer(index)}
                 onClearWeights={() => handleClearPlayerWeights(index)}
+                onRestoreWeights={handleRestorePlayerWeights}
               />
             ))}
             {players.length === 0 && (
