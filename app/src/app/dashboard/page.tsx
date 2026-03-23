@@ -523,7 +523,9 @@ export default function DashboardPage() {
       const todayLoss = (todayWeight !== null && yesterdayWeight !== null) ? yesterdayWeight - todayWeight : 0;
       const roundLoss = (startWeight !== null && latestWeight !== null) ? startWeight - latestWeight : 0;
 
-      if (!isCaptain) {
+      // Chỉ cộng người GIẢM cân hôm nay (todayLoss > 0 = giảm cân)
+      // Không tính người tăng cân vào tổng đội
+      if (!isCaptain && todayLoss > 0) {
         teamTodayLoss += todayLoss;
       }
 
@@ -575,7 +577,8 @@ export default function DashboardPage() {
       team_name: dataset.team_name,
       round_number: dataset.round_number?.toString() || dataset.round_name,
       day_number: dayNumber,
-      team_today_loss: Math.round(teamTodayLoss * 10) / 10,
+      // Negate để hiển thị dấu "-" (convention: âm = giảm, ví dụ: -0.4kg)
+      team_today_loss: teamTodayLoss > 0 ? -(Math.round(teamTodayLoss * 10) / 10) : 0,
       players: sortedPlayers,
     };
   }
