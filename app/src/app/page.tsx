@@ -1,13 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase, signInWithGoogle } from '@/lib/supabase';
 
-export default function HomePage() {
+/**
+ * Inner component that reads searchParams — must be wrapped in Suspense
+ * per Next.js App Router requirements for useSearchParams() at page level.
+ */
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
+
+  // Detect auth callback error forwarded via query param
+  const authError = searchParams.get('error') === 'auth_callback_failed';
 
   useEffect(() => {
     checkUser();
@@ -100,6 +108,13 @@ export default function HomePage() {
               </>
             )}
           </button>
+
+          {/* Auth error banner — shown when callback fails */}
+          {authError && (
+            <p className="mt-3 text-sm text-center text-red-500">
+              Đăng nhập thất bại. Vui lòng thử lại.
+            </p>
+          )}
         </div>
 
         {/* Footer */}
@@ -108,5 +123,20 @@ export default function HomePage() {
         </p>
       </div>
     </div>
+  );
+}
+
+/** Page shell — wraps LoginContent in Suspense for useSearchParams() compliance */
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
+          <div className="spinner-dark w-8 h-8 border-[3px]" />
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
