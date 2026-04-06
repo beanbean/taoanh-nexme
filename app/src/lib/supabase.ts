@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 import type { MarathonDataset, Player } from '@/types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -8,7 +8,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('[Supabase] Missing env vars: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder');
+/**
+ * Browser Supabase client using @supabase/ssr.
+ * createBrowserClient stores auth state (including PKCE code verifier) in cookies
+ * instead of localStorage, so the server-side callback route can read and complete
+ * the PKCE exchange correctly.
+ */
+export const supabase = createBrowserClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder');
 
 // Auth functions
 export async function signInWithGoogle() {
