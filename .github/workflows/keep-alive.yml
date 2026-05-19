@@ -1,0 +1,32 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # Chạy mỗi 3 ngày vào lúc 00:00 UTC (khoảng 07:00 giờ Việt Nam) để giữ Supabase luôn thức
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Cho phép kích hoạt thủ công bằng nút bấm trong tab Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          if [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ]; then
+            echo "Lỗi: Chưa cấu hình Secrets NEXT_PUBLIC_SUPABASE_URL hoặc NEXT_PUBLIC_SUPABASE_ANON_KEY trên GitHub Repository."
+            exit 1
+          fi
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/marathon_datasets?limit=1")
+          
+          echo "Supabase API trả về HTTP Status: $STATUS"
+          
+          if [ "$STATUS" -eq 200 ] || [ "$STATUS" -eq 406 ] || [ "$STATUS" -eq 401 ]; then
+            echo "Ping thành công! Database Supabase đang hoạt động bình thường."
+          else
+            echo "Cảnh báo: HTTP Status không mong muốn ($STATUS). Vui lòng kiểm tra lại cấu hình."
+            exit 1
+          fi
